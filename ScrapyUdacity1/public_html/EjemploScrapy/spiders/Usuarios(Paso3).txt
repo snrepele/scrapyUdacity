@@ -1,0 +1,54 @@
+from scrapy.spider import BaseSpider
+from scrapy.selector import HtmlXPathSelector
+from EjemploScrapy.items import EjemploscrapyItem
+import scrapy
+import json
+
+class MySpider(BaseSpider):
+  with open('D:\Nube\Dropbox\TESIS DATA LEARNING\Scrapy\EjemploScrapy\EjemploScrapy\spiders\cursoPsicologia.json') as foros:
+     data=json.load(foros)
+  #with open('C:\Users\Maria Leon\Dropbox\TESIS DATA LEARNING\Scrapy\EjemploScrapy\loros.json') as foros:
+     #data=json.load(foros)
+  
+  name = "udacity3"
+  start_urls =[]
+  usuarios =[]
+  var=0
+  #CARGAR TODOS LOS USUARIOS DEL ARCHIVO DE FOROS :CARGA USUARIOS QUE ESCRIBEN RESPUESTAS Y COMENTARIOS EN EL SEGUNDO FOR
+  for line in data:
+    usuarios=data[var]["user"]
+    usuariosComentarios = data[var]["idUserComment"]
+    for i in range(len(usuarios)):
+       user=data[var]["user"][i]
+       urlCompuesta="http://forums.udacity.com"+user
+       if urlCompuesta not in start_urls:
+           start_urls.append(urlCompuesta)
+    for j in range(len(usuariosComentarios)):
+       user1= data[var]["idUserComment"][j]
+       urlCompuesta="http://forums.udacity.com"+user1
+       if urlCompuesta not in start_urls:
+           start_urls.append(urlCompuesta)
+    var=var+1
+    
+  def parse(self, response):
+     hxs = HtmlXPathSelector(response)
+     print response
+     titles = hxs.select("//div[@id='mainbar-full']")
+     items = []
+     for sel in titles:
+        item = EjemploscrapyItem()
+        var = response.url
+        idPost1 = var.split('/')
+        item["user"]=idPost1[3]+"/"+idPost[4]+ "/"+idPost[5]
+        items.append(item)
+        item ["name"] = sel.select("//div[@class='headUser']//text()").extract()
+        item["name"] = str(item["name"])
+        item["name"] = item["name"].replace("u'\\n", "").replace("\\n","")
+        item ["memberSince"] = sel.select("//table[@class='user-details']//tr[2]//td[2]//strong//text()").extract()
+        item ["lastSeen"]= sel.select("//table[@class='user-details']//tr[3]//td[2]//strong//text()").extract()
+        item ["location"]= sel.select("//table[@class='user-details']//tr[5]//td[2]//text()").extract()
+        item["age"]=sel.select("//table[@class='user-details']//tr[6]//td[2]//text()").extract()
+        item["karma"] = sel.select("//div[@id='user-reputation']//text()").extract()
+        item["bio"] = sel.select("//div[@class='user-about']//p//text()").extract()
+        items.append(item)
+     return items

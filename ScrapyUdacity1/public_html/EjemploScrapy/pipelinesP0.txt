@@ -1,0 +1,46 @@
+# -*- coding: utf-8 -*-
+
+# Define your item pipelines here
+#
+# Don't forget to add your pipeline to the ITEM_PIPELINES setting
+# See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
+
+#Este clase me sirve para guardar los datos dentro de una base de datos MYSQL
+
+from MySQLdb import connect                                                        
+from scrapy import log                                                             
+from scrapy.exceptions import DropItem                                             
+
+
+class EjemploscrapyPipeline(object):
+    def process_item(self, item, spider):
+        #if item['idCourse'] in self.ids_seen:
+         #   raise DropItem("Duplicate item found: %s" % item)
+        #else:
+         #   self.ids_seen.add(item['idCourse'])
+            return item
+
+HOST = 'localhost'                                                                 
+USER = 'root'                                                                    
+PASSWD = ''                                                           
+DB = 'udacity'                                                                      
+
+
+class SQL(object):
+    def __init__(self):
+        self.ids_seen = set()                                                                 
+    def open_spider(self, spider):                                                 
+        self.dbcon = connect(host=HOST,                                            
+                             user=USER,                                            
+                             passwd=PASSWD,                                        
+                             db=DB)                                                
+        self.cursor = self.dbcon.cursor()                                          
+    def process_item(self, item, spider):
+        if item not in self.ids_seen:
+            self.cursor.execute("INSERT INTO curso(idCurso,tituloCurso,resumen) VALUES (%s,%s,%s)", (item['idCourse'].replace('>',''),item['title'],item["summary"]))
+            return item
+        else:
+            raise DropItem("**********ITEM DUPLICADO**************: %s" % item)
+        
+    def close_spider(self, spider):                                                
+        self.dbcon.commit()

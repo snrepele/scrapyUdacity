@@ -1,0 +1,76 @@
+# -*- coding: utf-8 -*-
+
+# Define your item pipelines here
+#
+# Don't forget to add your pipeline to the ITEM_PIPELINES setting
+# See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
+
+#Este clase me sirve para guardar los datos dentro de una base de datos MYSQL
+
+
+from MySQLdb import connect                                                        
+from scrapy import log                                                             
+from scrapy.exceptions import DropItem
+
+
+class EjemploscrapyPipeline(object):
+    def process_item(self, item, spider):
+            return item
+
+HOST = 'localhost'                                                                 
+USER = 'root'                                                                    
+PASSWD = ''                                                           
+DB = 'udacity'                                                                      
+
+
+class SQL(object):
+    def __init__(self):
+        self.ids_seen = set()                                                                 
+    def open_spider(self, spider):                                                 
+        self.dbcon = connect(host=HOST,                                            
+                             user=USER,                                            
+                             passwd=PASSWD,                                        
+                             db=DB)                                                
+        self.cursor = self.dbcon.cursor()                                          
+
+    def process_item(self, item, spider):                                          
+        self.cursor.execute("select * from post where idPost = %s", (item['idPost']))
+        result=self.cursor.fetchone()
+        if result:
+             print"*********YA SE HA INGRESADO ESTE ITEM*************"
+        else:
+            self.cursor.execute("INSERT INTO post(idPost,titlePost,relatedTo,textPost,idUser,datePost,seen,votes,numberAnswers) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", (item['idPost'],item['title'],item['relatedTo'],item['text'],item['user'][0],item['date'],item['seen'].replace(",","."),item['votes'],item['numberRespuests']))
+        i=0
+        j=0
+        #if item['respuest'][i] is not None:
+        #while item['respuest'][i]:
+        for it in item['idRespuest']:
+              self.cursor.execute("select * from respuesta where idAnswer = %s", (item['idRespuest'][i]))
+              result=self.cursor.fetchone() 
+              if not result:
+                  self.cursor.execute("INSERT INTO respuesta(idAnswer,idPost,idUser,textAnswer,dateAnswer,votesAnswer) VALUES (%s,%s,%s,%s,%s,%s)", (item['idRespuest'][i],item['idPost'],item['user'][i+1],item['respuest'][i],item['respuestDate'][i],item['voteRespuest'][i]))
+                  i=i+1
+              else:
+                  print "*********RESPUESTA YA INGRESADA********"
+        #if item['comments'][j] is not None:
+        #while item['comments'][j]:
+        for iteComen in item['idComment']:
+          idCommentTo = iteComen.split(" ")
+          self.cursor.execute("select * from comentarios where idComment = %s", (idCommentTo[0]))
+          result1=self.cursor.fetchone() 
+          if result1:
+              print "******COMENTARIO YA INGRESADO********"
+          else:
+              if idCommentTo[1] =="idPost":
+                  self.cursor.execute("INSERT INTO comentarios(idComment,idPost,idUser,textComment,dateComment) VALUES (%s,%s,%s,%s,%s)", (idCommentTo[0],idCommentTo[2],item['idUserComment'][j],item['comments'][j],item['dateComment'][j]))
+              if idCommentTo[1] =="idRespuest":
+                  self.cursor.execute("INSERT INTO comentarios(idComment,idUser,textComment,dateComment,idAnswer) VALUES (%s,%s,%s,%s,%s)", (idCommentTo[0],item['idUserComment'][j],item['comments'][j],item['dateComment'][j],idCommentTo[2]))
+          j=j+1
+        #ULTIMAS LINEAS DE VALIDACION CAMBIADAS
+        if item not in self.ids_seen:
+            return item
+        else:
+            raise DropItem("**********ITEM DUPLICADO************: %s" % item)
+
+    def close_spider(self, spider):
+        self.dbcon.commit()
